@@ -57,6 +57,6 @@ def connectmysql():
     return mdb, mcr
 
 
+db, cr = connectmysql()
 if __name__ == '__main__':
-    db, cr = connectmysql()
     app.run(debug=True, host='0.0.0.0', port=5001)
