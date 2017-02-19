@@ -13,7 +13,7 @@ then
         echo "uwsgi is running!"
         exit 0
     else
-        sh run_uwsgi
+        sh run_uwsgi.sh
         echo "Start uwsgi service [OK]"
     fi
 
@@ -23,7 +23,7 @@ elif [ $1 = stop ];then
     echo "Stop uwsgi service [OK]"
 elif [ $1 = restart ];then
     killall -9 uwsgi
-    sh run_uwsgi
+    sh run_uwsgi.sh
     echo "Restart uwsgi service [OK]"
 
 else
