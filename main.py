@@ -17,8 +17,8 @@ VERSION = 'v0.01'
 APIURL = '/api/' + VERSION
 APKSRC = 'http://icon-server.b0.upaiyun.com/web/MapTestV0_01.apk'
 
-global db
-global cr
+# global db
+
 
 
 @app.route('/index', methods=['GET'])
@@ -37,8 +37,8 @@ def apitest():
 
 @app.route(APIURL + '/newpoint', methods=['POST'])
 def newpoint():
-    global db
-    global cr
+    db = Ms.connect('localhost', 'cj', 'cj', 'cj', charset="utf8")
+    cr = db.cursor()
 
     data = request.get_data()
     body = json.loads(data)
@@ -60,6 +60,7 @@ def newpoint():
     if not check_user(userID, userID2):
         result = {'statue': 202,
                   'errorMessage': 'user check failed!'}
+        db.close()
         return make_response(jsonify(result), 200)
 
     query = "INSERT INTO usermessage set " \
@@ -79,6 +80,7 @@ def newpoint():
               'errorMessage': 'no error',
               'pointData': pd}
     print result
+    db.close()
     return make_response(jsonify(result), 200)
 
 
@@ -105,8 +107,8 @@ def selectarea():
 
 @app.route(APIURL + '/getpoint', methods=['POST'])
 def getpoint():
-    global db
-    global cr
+    db = Ms.connect('localhost', 'cj', 'cj', 'cj', charset="utf8")
+    cr = db.cursor()
 
     data = request.get_data()
     body = json.loads(data)
@@ -131,6 +133,7 @@ def getpoint():
                   'errorMessage': 'no error',
                   'pointData': pd}
     print result
+    db.close()
     return make_response(jsonify(result), 200)
 
 
@@ -157,19 +160,20 @@ def searchpoint(lt_la, lt_lo, rb_la, rb_lo):
 
 
 def selectallpoint():
-    global db
-    global cr
+    db = Ms.connect('localhost', 'cj', 'cj', 'cj', charset="utf8")
+    cr = db.cursor()
 
     query = "SELECT latitude,longitude,pointID,userID,userMessage FROM usermessage ORDER BY pointTime DESC limit 100"
     cr.execute(query)
     results = cr.fetchall()
+    db.close()
     return results
 
 
 @app.route(APIURL + '/newuser', methods=['POST'])
 def newuser():
-    global db
-    global cr
+    db = Ms.connect('localhost', 'cj', 'cj', 'cj', charset="utf8")
+    cr = db.cursor()
 
     data = request.get_data()
     body = json.loads(data)
@@ -201,27 +205,31 @@ def newuser():
     db.commit()
 
     userinfo = {'userID': userID, 'userIcon': userIcon, 'userName': userName,
-                'userDes': userDes, 'userLikeCommentIDList': []}
+                'userDes': userDes}
+    userinfo2 = {'userinfo': userinfo,
+                 'userID2': userID2}
     result = {'statue': 100,
               'errorMessage': 'no error',
-              'userinfo': userinfo,
-              'userID2': userID2}
+              'userinfo2': userinfo2,
+              'userLikeCommentIDList': [],
+              'userLikePointIDList': []}
 
     print result
+    db.close()
     return make_response(jsonify(result), 200)
 
 
 @app.route(APIURL + '/getuser', methods=['POST'])
 def getuser():
-    global db
-    global cr
+    db = Ms.connect('localhost', 'cj', 'cj', 'cj', charset="utf8")
+    cr = db.cursor()
 
     data = request.get_data()
     body = json.loads(data)
     print body
     userID = body['userID']
 
-    query = "SELECT userID,userIcon,userName,userDes,userLikeCommentIDList,userLikePointIDList FROM userinfo " \
+    query = "SELECT userID,userIcon,userName,userDes FROM userinfo " \
             "WHERE userID='%s'" % userID
 
     cr.execute(query)
@@ -231,24 +239,94 @@ def getuser():
                   'errorMessage': 'no match user'}
     else:
         userinfo = {'userID': duserinfo[0], 'userIcon': duserinfo[1],
-                    'userName': duserinfo[2], 'userDes': duserinfo[3],
-                    'userLikeCommentIDList': duserinfo[4], 'userLikePointIDList': duserinfo[5]}
+                    'userName': duserinfo[2], 'userDes': duserinfo[3]}
         userinfo['userName'] = base64.b64decode(userinfo['userName'])
         userinfo['userDes'] = base64.b64decode(userinfo['userDes'])
-        userinfo['userLikeCommentIDList'] = json.loads(userinfo['userLikeCommentIDList'])
-        userinfo['userLikePointIDList'] = json.loads(userinfo['userLikePointIDList'])
         result = {'statue': 100,
                   'errorMessage': 'no error',
                   'userinfo': userinfo}
 
     print result
+    db.close()
+    return make_response(jsonify(result), 200)
+
+
+@app.route(APIURL + '/getuserlikecommentidlist', methods=['POST'])
+def getuserlikecommentidlist():
+    db = Ms.connect('localhost', 'cj', 'cj', 'cj', charset="utf8")
+    cr = db.cursor()
+
+    data = request.get_data()
+    body = json.loads(data)
+    print body
+    userID = body['userinfo']['userID']
+    userID2 = body['userID2']
+
+    if not check_user(userID, userID2):
+        result = {'statue': 202,
+                  'errorMessage': 'user check failed!'}
+        db.close()
+        return make_response(jsonify(result), 200)
+
+    query = "SELECT userLikeCommentIDList FROM userinfo " \
+            "WHERE userID='%s'" % userID
+
+    cr.execute(query)
+    duserinfo = cr.fetchone()
+    if duserinfo is None:
+        result = {'statue': 200,
+                  'errorMessage': 'no match user'}
+    else:
+        ulci = json.loads(duserinfo[0])
+        result = {'statue': 100,
+                  'errorMessage': 'no error',
+                  'userLikeCommentIDList': ulci}
+
+    print result
+    db.close()
+    return make_response(jsonify(result), 200)
+
+
+@app.route(APIURL + '/getuserlikepointidlist', methods=['POST'])
+def getuserlikepointidlist():
+    db = Ms.connect('localhost', 'cj', 'cj', 'cj', charset="utf8")
+    cr = db.cursor()
+
+    data = request.get_data()
+    body = json.loads(data)
+    print body
+    userID = body['userinfo']['userID']
+    userID2 = body['userID2']
+
+    if not check_user(userID, userID2):
+        result = {'statue': 202,
+                  'errorMessage': 'user check failed!'}
+        db.close()
+        return make_response(jsonify(result), 200)
+
+    query = "SELECT userLikePointIDList FROM userinfo " \
+            "WHERE userID='%s'" % userID
+
+    cr.execute(query)
+    duserinfo = cr.fetchone()
+    if duserinfo is None:
+        result = {'statue': 200,
+                  'errorMessage': 'no match user'}
+    else:
+        ulpi = json.loads(duserinfo[0])
+        result = {'statue': 100,
+                  'errorMessage': 'no error',
+                  'userLikePointIDList': ulpi}
+
+    print result
+    db.close()
     return make_response(jsonify(result), 200)
 
 
 @app.route(APIURL + '/updateuser', methods=['POST'])
 def updateuser():
-    global db
-    global cr
+    db = Ms.connect('localhost', 'cj', 'cj', 'cj', charset="utf8")
+    cr = db.cursor()
 
     data = request.get_data()
     body = json.loads(data)
@@ -266,42 +344,34 @@ def updateuser():
     if not check_user(userID, userID2):
         result = {'statue': 202,
                   'errorMessage': 'user check failed!'}
+        db.close()
         return make_response(jsonify(result), 200)
 
-    query = "SELECT userinfo_id FROM userinfo " \
-            "WHERE userID2='%s'" % userID2
+    query = "UPDATE userinfo SET" \
+            " userIcon='%s'" \
+            ",userName='%s'" \
+            ",userDes='%s'" \
+            " WHERE userID='%s'" \
+            % (userIcon, userNameB64, userDesB64, userID)
+    print query
 
     cr.execute(query)
-    duserinfo = cr.fetchone()
+    db.commit()
 
-    if duserinfo is None:
-        result = {'statue': 200,
-                  'errorMessage': 'no match user'}
-    else:
-        query = "UPDATE userinfo SET" \
-                " userIcon='%s'" \
-                ",userName='%s'" \
-                ",userDes='%s'" \
-                " WHERE userinfo_id='%s'" \
-                % (userIcon, userNameB64, userDesB64, duserinfo[0])
-        print query
-
-        cr.execute(query)
-        db.commit()
-
-        userinfo = {'userID': userID, 'userIcon': userIcon, 'userName': userName, 'userDes': userDes}
-        result = {'statue': 100,
-                  'errorMessage': 'no error',
-                  'userinfo': userinfo}
+    userinfo = {'userID': userID, 'userIcon': userIcon, 'userName': userName, 'userDes': userDes}
+    result = {'statue': 100,
+              'errorMessage': 'no error',
+              'userinfo': userinfo}
 
     print result
+    db.close()
     return make_response(jsonify(result), 200)
 
 
 @app.route(APIURL + '/newcomment', methods=['POST'])
 def newcomment():
-    global db
-    global cr
+    db = Ms.connect('localhost', 'cj', 'cj', 'cj', charset="utf8")
+    cr = db.cursor()
 
     data = request.get_data()
     body = json.loads(data)
@@ -320,6 +390,7 @@ def newcomment():
     if not check_user(userID, userID2):
         result = {'statue': 202,
                   'errorMessage': 'user check failed!'}
+        db.close()
         return make_response(jsonify(result), 200)
 
     query = "INSERT INTO usercomment set " \
@@ -337,13 +408,14 @@ def newcomment():
     result = {'statue': 100,
               'errorMessage': 'no error'}
     print result
+    db.close()
     return make_response(jsonify(result), 200)
 
 
 @app.route(APIURL + '/getpointcomment', methods=['POST'])
 def getpointcomment():
-    global db
-    global cr
+    db = Ms.connect('localhost', 'cj', 'cj', 'cj', charset="utf8")
+    cr = db.cursor()
 
     data = request.get_data()
     body = json.loads(data)
@@ -381,13 +453,14 @@ def getpointcomment():
                   'userCommentList': userCommentList}
 
     print result
+    db.close()
     return make_response(jsonify(result), 200)
 
 
 @app.route(APIURL + '/userlikecomment', methods=['POST'])
 def userlikecomment():
-    global db
-    global cr
+    db = Ms.connect('localhost', 'cj', 'cj', 'cj', charset="utf8")
+    cr = db.cursor()
 
     # 解析数据
     data = request.get_data()
@@ -402,6 +475,7 @@ def userlikecomment():
     if not check_user(userID, userID2):
         result = {'statue': 202,
                   'errorMessage': 'user check failed!'}
+        db.close()
         return make_response(jsonify(result), 200)
 
     query = "SELECT userLikeCommentIDList FROM userinfo " \
@@ -413,6 +487,7 @@ def userlikecomment():
     if userLikeCommentIDList is None:
         result = {'statue': 200,
                   'errorMessage': 'no match user'}
+        db.close()
         return make_response(jsonify(result), 200)
 
     # 更新评论喜爱数
@@ -453,13 +528,14 @@ def userlikecomment():
               'commentID': commentID,
               'commentLikeNum': commentLikeNum}
     print result
+    db.close()
     return make_response(jsonify(result), 200)
 
 
 @app.route(APIURL + '/userlikepoint', methods=['POST'])
 def userlikepoint():
-    global db
-    global cr
+    db = Ms.connect('localhost', 'cj', 'cj', 'cj', charset="utf8")
+    cr = db.cursor()
 
     # 解析数据
     data = request.get_data()
@@ -485,6 +561,7 @@ def userlikepoint():
     if userLikePointIDList is None:
         result = {'statue': 200,
                   'errorMessage': 'no match user'}
+        db.close()
         return make_response(jsonify(result), 200)
 
     # 更新评论喜爱数
@@ -525,6 +602,7 @@ def userlikepoint():
               'pointID': pointID,
               'pointLikeNum': pointLikeNum}
     print result
+    db.close()
     return make_response(jsonify(result), 200)
 
 
@@ -537,39 +615,38 @@ def genuserid():
 
 
 def check_user(userID, userID2):
-    global db
-    global cr
+    db = Ms.connect('localhost', 'cj', 'cj', 'cj', charset="utf8")
+    cr = db.cursor()
 
     query = "SELECT userID FROM userinfo " \
             "WHERE userID='%s' and userID2='%s'" % (userID, userID2)
     cr.execute(query)
     duserinfo = cr.fetchone()
+    db.close()
     if duserinfo is None:
         return False
     return True
 
 
 def getNameAndIconByID(userID):
-    global db
-    global cr
+    db = Ms.connect('localhost', 'cj', 'cj', 'cj', charset="utf8")
+    cr = db.cursor()
 
     query = "SELECT userName, userIcon FROM userinfo " \
             "WHERE userID='%s'" % userID
     cr.execute(query)
     row = cr.fetchone()
+    db.close()
     if row is None:
         return None, None
     else:
         return row[0], row[1]
 
-
 # @postfork
 def connectmysql():
-    global db
-    global cr
+    # global db
 
     db = Ms.connect('localhost', 'cj', 'cj', 'cj', charset="utf8")
-    cr = db.cursor()
     print '===================>connect mysql success'
 
 
